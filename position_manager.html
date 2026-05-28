@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Position Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #111111; --surface: #1A1A1A; --border: #2E2A20;
+    --text: #F0E0A0; --muted: #8A7D50;
+    --accent: #B8960C; --accent-mid: #D4AF37; --accent-light: #2A2410;
+    --danger: #E05050; --danger-light: #2A1010;
+    --warn-light: #231808; --warn: #C88030;
+    --radius: 10px; --radius-sm: 6px;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+  .app { max-width: 600px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 2rem; }
+  .header-title { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
+  .header-sub { font-size: 13px; color: var(--muted); margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .conn-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; font-family: 'DM Mono', monospace; padding: 5px 10px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); flex-shrink: 0; }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+  .conn-dot.ok { background: var(--accent-mid); } .conn-dot.err { background: var(--danger); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 1rem; }
+  .error-msg { background: var(--danger-light); border: 1px solid #e5b3b3; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--danger); margin-bottom: 1rem; }
+  .info-msg { background: var(--accent-light); border: 1px solid #8A6A10; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--accent); margin-bottom: 1rem; display: none; }
+  /* Add form */
+  .add-row { display: flex; gap: 8px; align-items: flex-end; }
+  .add-row .form-field { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+  .field-label { font-size: 12px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  input[type=text] { height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 13px; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.15s; width: 100%; }
+  input[type=text]:focus { border-color: var(--accent-mid); }
+  .btn { padding: 9px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.12s; white-space: nowrap; }
+  .btn:hover { background: var(--bg); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { background: #1e3710; }
+  .btn.danger { background: var(--danger-light); color: var(--danger); border-color: #e5b3b3; }
+  .btn.danger:hover { background: #f9dada; }
+  .btn.ghost { background: none; border: none; color: var(--muted); padding: 4px 6px; font-size: 18px; line-height: 1; }
+  .btn.ghost:hover { color: var(--text); background: var(--bg); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  /* Position list */
+  .pos-list { display: flex; flex-direction: column; gap: 4px; }
+  .pos-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); transition: border-color 0.15s; }
+  .pos-item.editing { border-color: var(--accent-mid); background: var(--accent-light); }
+  .drag-handle { color: var(--muted); cursor: grab; font-size: 16px; flex-shrink: 0; user-select: none; line-height: 1; }
+  .drag-handle:active { cursor: grabbing; }
+  .pos-item.dragging { opacity: 0.4; border-style: dashed; }
+  .pos-item.drag-over { border-color: var(--accent); border-style: dashed; }
+  .pos-order { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); min-width: 20px; text-align: right; flex-shrink: 0; }
+  .pos-name { flex: 1; font-size: 14px; font-weight: 500; }
+  .pos-name-input { flex: 1; height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 13px; font-family: 'DM Sans', sans-serif; outline: none; }
+  .pos-name-input:focus { border-color: var(--accent-mid); }
+  .pos-usage { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); padding: 2px 7px; background: var(--bg); border-radius: 10px; border: 1px solid var(--border); flex-shrink: 0; }
+  .pos-actions { display: flex; gap: 2px; flex-shrink: 0; }
+  .icon-btn { border: none; background: none; cursor: pointer; color: var(--muted); padding: 4px 5px; border-radius: 4px; font-size: 13px; line-height: 1; transition: all 0.1s; }
+  .icon-btn:hover.edit-btn { color: var(--accent); background: var(--accent-light); }
+  .icon-btn:hover.save-btn { color: var(--accent); background: var(--accent-light); }
+  .icon-btn:hover.del-btn  { color: var(--danger); background: var(--danger-light); }
+  .icon-btn:hover.cancel-btn { color: var(--text); background: var(--bg); }
+  .empty-state { text-align: center; padding: 2rem 1rem; color: var(--muted); font-size: 13px; }
+  .loading { text-align: center; padding: 2rem; color: var(--muted); font-size: 13px; font-family: 'DM Mono', monospace; }
+  /* Usage section */
+  .usage-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+  .usage-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 0.75rem; }
+  .usage-row { display: flex; align-items: baseline; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .usage-row:last-child { border-bottom: none; }
+  .usage-pos { flex: 1; font-weight: 500; }
+  .usage-count { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); }
+  .reorder-hint { font-size: 12px; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 5px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <div class="header-title">Position Manager</div>
+      <div class="header-sub" id="org-label">connecting…</div>
+    </div>
+    <div class="conn-badge"><div class="conn-dot" id="conn-dot"></div><span id="conn-text">connecting</span></div>
+  </div>
+
+  <div id="main-error" class="error-msg" style="display:none;"></div>
+  <div id="main-info" class="info-msg"></div>
+
+  <!-- Add new position -->
+  <div class="card">
+    <div class="card-title">Add new position</div>
+    <div class="add-row">
+      <div class="form-field">
+        <label class="field-label">Position title</label>
+        <input type="text" id="new-title" placeholder="e.g. Risk Manager, Warden…" onkeydown="if(event.key==='Enter')addPosition()" />
+      </div>
+      <button class="btn primary" id="add-btn" onclick="addPosition()">Add position</button>
+    </div>
+  </div>
+
+  <!-- Position list -->
+  <div class="card">
+    <div class="card-title">All positions</div>
+    <div class="reorder-hint">☰ Drag rows to reorder — order here determines the dropdown order on member pages.</div>
+    <div id="pos-list"><div class="loading">Loading…</div></div>
+  </div>
+
+  <!-- Usage summary -->
+  <div class="usage-card" id="usage-card" style="display:none;">
+    <div class="usage-title">Position usage across all members</div>
+    <div id="usage-list"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://bhdoqgccfqqdcxbtyhge.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJoZG9xZ2NjZnFxZGN4YnR5aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODY4OTUsImV4cCI6MjA5NTQ2Mjg5NX0.SZzZKntYhf8_uXx1yQyHfJT7aXwVnjHJA-UOIJQpfZI';
+
+async function api(path, method='GET', body=null) {
+  const opts = { method, headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, opts);
+  if (!r.ok) throw new Error(await r.text());
+  try { return await r.json(); } catch { return null; }
+}
+
+let positions = [];
+let usageCounts = {};
+let editingPosId = null;
+let dragSrcIdx = null;
+
+function showError(msg) { const el=document.getElementById('main-error'); el.textContent=msg; el.style.display='block'; }
+function hideError() { document.getElementById('main-error').style.display='none'; }
+function showInfo(msg) { const el=document.getElementById('main-info'); el.textContent=msg; el.style.display='block'; setTimeout(()=>el.style.display='none', 2500); }
+
+async function init() {
+  try {
+    await loadAll();
+    document.getElementById('conn-dot').className = 'conn-dot ok';
+    document.getElementById('conn-text').textContent = 'connected';
+  } catch(e) {
+    document.getElementById('conn-dot').className = 'conn-dot err';
+    document.getElementById('conn-text').textContent = 'error';
+    showError('Could not connect: ' + e.message);
+  }
+}
+
+async function loadAll() {
+  [positions] = await Promise.all([
+    api('positions?order=sort_order.asc')
+  ]);
+
+  // Load usage counts
+  try {
+    const usage = await api('member_positions?select=position_id');
+    usageCounts = {};
+    (usage || []).forEach(u => { usageCounts[u.position_id] = (usageCounts[u.position_id]||0) + 1; });
+  } catch { usageCounts = {}; }
+
+  document.getElementById('org-label').textContent = `${positions.length} positions`;
+  renderList();
+  renderUsage();
+}
+
+function renderList() {
+  const wrap = document.getElementById('pos-list');
+  if (!positions.length) { wrap.innerHTML = '<div class="empty-state">No positions yet. Add one above.</div>'; return; }
+  wrap.innerHTML = positions.map((p, i) => {
+    const count = usageCounts[p.id] || 0;
+    const isEditing = editingPosId === p.id;
+    return `<div class="pos-item ${isEditing?'editing':''}" draggable="true" data-idx="${i}"
+        ondragstart="onDragStart(event,${i})" ondragover="onDragOver(event,${i})"
+        ondragleave="onDragLeave(event)" ondrop="onDrop(event,${i})" ondragend="onDragEnd()">
+      <span class="drag-handle" title="Drag to reorder">⠿</span>
+      <span class="pos-order">${i+1}</span>
+      ${isEditing
+        ? `<input class="pos-name-input" id="edit-pos-input" value="${escHtml(p.title)}" onkeydown="if(event.key==='Enter')saveEdit('${p.id}');if(event.key==='Escape')cancelEdit();" />`
+        : `<span class="pos-name">${escHtml(p.title)}</span>`
+      }
+      <span class="pos-usage" title="${count} member record(s)">${count} use${count===1?'':'s'}</span>
+      <div class="pos-actions">
+        ${isEditing
+          ? `<button class="icon-btn save-btn" title="Save" onclick="saveEdit('${p.id}')">✓</button>
+             <button class="icon-btn cancel-btn" title="Cancel" onclick="cancelEdit()">✕</button>`
+          : `<button class="icon-btn edit-btn" title="Rename" onclick="startEdit('${p.id}')">✎</button>
+             <button class="icon-btn del-btn" title="Delete${count?` (${count} records use this)`:''}${count?' — will remove from members':''}" onclick="deletePosition('${p.id}','${escHtml(p.title)}',${count})">🗑</button>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+
+  if (editingPosId) { setTimeout(()=>{ const el=document.getElementById('edit-pos-input'); if(el){el.focus();el.select();} }, 30); }
+}
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderUsage() {
+  const card = document.getElementById('usage-card');
+  const list = document.getElementById('usage-list');
+  const used = positions.filter(p => (usageCounts[p.id]||0) > 0).sort((a,b)=>(usageCounts[b.id]||0)-(usageCounts[a.id]||0));
+  if (!used.length) { card.style.display='none'; return; }
+  card.style.display='block';
+  list.innerHTML = used.map(p => `<div class="usage-row"><span class="usage-pos">${escHtml(p.title)}</span><span class="usage-count">${usageCounts[p.id]} record${usageCounts[p.id]===1?'':'s'}</span></div>`).join('');
+}
+
+// ── Add ──
+async function addPosition() {
+  hideError();
+  const title = document.getElementById('new-title').value.trim();
+  if (!title) { showError('Please enter a position title.'); return; }
+  if (positions.some(p => p.title.toLowerCase() === title.toLowerCase())) { showError(`"${title}" already exists.`); return; }
+  const btn = document.getElementById('add-btn');
+  btn.disabled = true; btn.textContent = 'Adding…';
+  try {
+    const maxOrder = positions.length ? Math.max(...positions.map(p=>p.sort_order||0)) : 0;
+    await api('positions', 'POST', { title, sort_order: maxOrder + 1 });
+    document.getElementById('new-title').value = '';
+    showInfo(`"${title}" added!`);
+    await loadAll();
+  } catch(e) { showError('Failed to add: ' + e.message); }
+  finally { btn.disabled=false; btn.textContent='Add position'; }
+}
+
+// ── Edit ──
+function startEdit(id) { editingPosId = id; renderList(); }
+function cancelEdit() { editingPosId = null; renderList(); }
+
+async function saveEdit(id) {
+  hideError();
+  const el = document.getElementById('edit-pos-input');
+  const title = el ? el.value.trim() : '';
+  if (!title) { showError('Title cannot be empty.'); return; }
+  if (positions.some(p => p.id !== id && p.title.toLowerCase() === title.toLowerCase())) { showError(`"${title}" already exists.`); return; }
+  try {
+    await api(`positions?id=eq.${id}`, 'PATCH', { title });
+    editingPosId = null;
+    showInfo('Position renamed.');
+    await loadAll();
+  } catch(e) { showError('Failed to rename: ' + e.message); }
+}
+
+// ── Delete ──
+async function deletePosition(id, title, count) {
+  hideError();
+  const msg = count > 0
+    ? `Delete "${title}"?\n\nThis position is recorded for ${count} member record(s). Those records will be permanently deleted too.`
+    : `Delete "${title}"?`;
+  if (!confirm(msg)) return;
+  try {
+    await api(`positions?id=eq.${id}`, 'DELETE');
+    showInfo(`"${title}" deleted.`);
+    await loadAll();
+  } catch(e) { showError('Failed to delete: ' + e.message); }
+}
+
+// ── Drag to reorder ──
+function onDragStart(e, idx) {
+  dragSrcIdx = idx;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+function onDragOver(e, idx) {
+  e.preventDefault();
+  if (idx === dragSrcIdx) return;
+  document.querySelectorAll('.pos-item').forEach(el => el.classList.remove('drag-over'));
+  e.currentTarget.classList.add('drag-over');
+}
+function onDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function onDragEnd() { document.querySelectorAll('.pos-item').forEach(el => el.classList.remove('dragging','drag-over')); }
+
+async function onDrop(e, targetIdx) {
+  e.preventDefault();
+  if (dragSrcIdx === null || dragSrcIdx === targetIdx) return;
+  const reordered = [...positions];
+  const [moved] = reordered.splice(dragSrcIdx, 1);
+  reordered.splice(targetIdx, 0, moved);
+  positions = reordered;
+  renderList();
+  // Persist new order
+  try {
+    await Promise.all(reordered.map((p, i) => api(`positions?id=eq.${p.id}`, 'PATCH', { sort_order: i + 1 })));
+    showInfo('Order saved.');
+    await loadAll();
+  } catch(e) { showError('Failed to save order: ' + e.message); }
+  dragSrcIdx = null;
+}
+
+init();
+</script>
+</body>
+</html>

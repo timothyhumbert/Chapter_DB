@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Attendance Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #111111;
+    --surface: #1A1A1A;
+    --border: #2E2A20;
+    --text: #F0E0A0;
+    --muted: #8A7D50;
+    --accent: #B8960C;
+    --accent-light: #2A2410;
+    --accent-mid: #D4AF37;
+    --warn: #C88030;
+    --warn-light: #231808;
+    --danger: #E05050;
+    --danger-light: #2A1010;
+    --present: #B8960C;
+    --present-bg: #2A2410;
+    --excused-bg: #231808;
+    --excused: #C88030;
+    --absent-bg: #2A1010;
+    --absent: #E05050;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .app {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+  }
+
+  .header-title {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+
+  .header-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .conn-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    padding: 5px 10px;
+    border-radius: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  .conn-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #ccc;
+    flex-shrink: 0;
+  }
+
+  .conn-dot.ok { background: var(--accent-mid); }
+  .conn-dot.err { background: var(--danger); }
+
+  .tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 1.5rem;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 8px 10px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+
+  .tab.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .field-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .field-row:last-child { margin-bottom: 0; }
+
+  .field-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 70px;
+  }
+
+  select, input[type=text], input[type=date] {
+    flex: 1;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  select:focus, input:focus { border-color: var(--accent-mid); }
+
+  .member-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .member-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color 0.15s;
+  }
+
+  .avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .member-name { flex: 1; font-size: 14px; font-weight: 500; }
+
+  .status-btns { display: flex; gap: 4px; }
+
+  .status-btn {
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.12s;
+    white-space: nowrap;
+  }
+
+  .status-btn.present.sel { background: var(--present-bg); color: var(--present); border-color: var(--present); font-weight: 600; }
+  .status-btn.excused.sel { background: var(--excused-bg); color: var(--excused); border-color: var(--excused); font-weight: 600; }
+  .status-btn.absent.sel  { background: var(--absent-bg);  color: var(--absent);  border-color: var(--absent);  font-weight: 600; }
+
+  .save-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 1rem;
+  }
+
+  .save-msg {
+    font-size: 13px;
+    color: var(--accent-mid);
+    font-family: 'DM Mono', monospace;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .save-msg.visible { opacity: 1; }
+
+  .btn {
+    padding: 9px 18px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .btn:hover { background: var(--bg); }
+
+  .btn.primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .btn.primary:hover { background: #1e3710; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 1.25rem;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+  }
+
+  .stat-num { font-size: 26px; font-weight: 600; letter-spacing: -1px; }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .report-member-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .report-member-row:last-child { border-bottom: none; }
+
+  .bar-bg {
+    flex: 1;
+    height: 5px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+    min-width: 60px;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--accent-mid);
+    transition: width 0.4s ease;
+  }
+
+  .pct {
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    min-width: 38px;
+    text-align: right;
+  }
+
+  .pct.low { color: var(--danger); }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .empty-state svg { margin-bottom: 10px; opacity: 0.3; }
+
+  .error-msg {
+    background: var(--danger-light);
+    border: 1px solid #e5b3b3;
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--danger);
+    margin-bottom: 1rem;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 2rem;
+    color: var(--muted);
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .report-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1rem;
+    align-items: center;
+  }
+
+  .filter-label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+  }
+
+  .tag {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  .tag.present { background: var(--present-bg); color: var(--present); }
+  .tag.excused  { background: var(--excused-bg); color: var(--excused); }
+  .tag.absent   { background: var(--absent-bg);  color: var(--absent);  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <div class="header-title">Attendance Tracker</div>
+      <div class="header-sub" id="org-label">connecting…</div>
+    </div>
+    <div class="conn-badge">
+      <div class="conn-dot" id="conn-dot"></div>
+      <span id="conn-text">connecting</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('take')">Take Attendance</button>
+    <button class="tab" onclick="switchTab('report')">Reports</button>
+  </div>
+
+  <!-- TAKE ATTENDANCE -->
+  <div id="take" class="section active">
+    <div id="take-error" class="error-msg" style="display:none;"></div>
+    <div class="card">
+      <div class="field-row">
+        <span class="field-label">Type</span>
+        <select id="att-type" onchange="loadItems()">
+          <option value="meeting">Meeting</option>
+          <option value="event">Event</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Select</span>
+        <select id="att-item">
+          <option value="">— loading —</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="member-list-wrap">
+      <div class="loading">Loading members…</div>
+    </div>
+
+    <div class="save-bar">
+      <span class="save-msg" id="save-msg">Saved!</span>
+      <button class="btn primary" id="save-btn" onclick="saveAttendance()" disabled>Save attendance</button>
+    </div>
+  </div>
+
+  <!-- REPORTS -->
+  <div id="report" class="section">
+    <div id="report-error" class="error-msg" style="display:none;"></div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-num" id="stat-members">—</div>
+        <div class="stat-label">Active members</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-events">—</div>
+        <div class="stat-label">Meetings &amp; events</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-rate">—</div>
+        <div class="stat-label">Avg attendance</div>
+      </div>
+    </div>
+
+    <div class="report-filters">
+      <span class="filter-label">Filter</span>
+      <select id="report-type" onchange="loadReport()" style="flex:none;width:140px;">
+        <option value="all">All</option>
+        <option value="meeting">Meetings only</option>
+        <option value="event">Events only</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Member attendance rate</div>
+      <div id="report-list"><div class="loading">Loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://bhdoqgccfqqdcxbtyhge.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJoZG9xZ2NjZnFxZGN4YnR5aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODY4OTUsImV4cCI6MjA5NTQ2Mjg5NX0.SZzZKntYhf8_uXx1yQyHfJT7aXwVnjHJA-UOIJQpfZI';
+
+const COLORS = [
+  ['#2A2410','#B8960C'],['#1E1830','#B8A0E8'],['#231808','#C88030'],
+  ['#0E1E30','#4A90D9'],['#FAEEDA','#854F0B'],['#2A2410','#D4AF37'],
+  ['#2A1808','#C87040'],['#222018','#A09060'],
+];
+
+function avatarColor(name) {
+  let h = 0;
+  for (let c of name) h = (h * 31 + c.charCodeAt(0)) & 0xFFFF;
+  return COLORS[h % COLORS.length];
+}
+
+function initials(first, last) {
+  return ((first||'')[0]||'').toUpperCase() + ((last||'')[0]||'').toUpperCase();
+}
+
+async function api(path) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+    }
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function apiPost(path, body) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r;
+}
+
+async function apiUpsert(path, body, onConflict) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': `resolution=merge-duplicates,return=minimal`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r;
+}
+
+let members = [];
+let statusMap = {};
+
+async function init() {
+  try {
+    members = await api('members?status=eq.active&order=last_name.asc');
+    document.getElementById('conn-dot').className = 'conn-dot ok';
+    document.getElementById('conn-text').textContent = 'connected';
+    document.getElementById('org-label').textContent = `${members.length} active members`;
+    await loadItems();
+    await loadReport();
+  } catch(e) {
+    document.getElementById('conn-dot').className = 'conn-dot err';
+    document.getElementById('conn-text').textContent = 'error';
+    showError('take-error', 'Could not connect to Supabase. Check that the SQL tables have been created. ' + e.message);
+  }
+}
+
+async function loadItems() {
+  const type = document.getElementById('att-type').value;
+  const sel = document.getElementById('att-item');
+  sel.innerHTML = '<option value="">Loading…</option>';
+  try {
+    let items;
+    if (type === 'meeting') {
+      items = await api('meetings?order=meeting_date.desc&limit=30');
+      sel.innerHTML = items.length
+        ? items.map(m => `<option value="${m.id}">${m.meeting_date} — ${m.title || m.type || 'Meeting'}</option>`).join('')
+        : '<option value="">No meetings found</option>';
+    } else {
+      items = await api('events?order=event_date.desc&limit=30');
+      sel.innerHTML = items.length
+        ? items.map(e => `<option value="${e.id}">${e.event_date} — ${e.name}</option>`).join('')
+        : '<option value="">No events found</option>';
+    }
+    renderMemberList();
+  } catch(e) {
+    showError('take-error', 'Failed to load items: ' + e.message);
+  }
+}
+
+function renderMemberList() {
+  statusMap = {};
+  const wrap = document.getElementById('member-list-wrap');
+  if (!members.length) {
+    wrap.innerHTML = '<div class="empty-state">No active members found. Add members to the database first.</div>';
+    document.getElementById('save-btn').disabled = true;
+    return;
+  }
+  const itemId = document.getElementById('att-item').value;
+  document.getElementById('save-btn').disabled = !itemId;
+
+  wrap.innerHTML = '<div class="member-list">' +
+    members.map(m => {
+      const inits = initials(m.first_name, m.last_name);
+      const [bg, fg] = avatarColor(m.first_name + m.last_name);
+      statusMap[m.id] = 'present';
+      return `<div class="member-row" id="row-${m.id}">
+        <div class="avatar" style="background:${bg};color:${fg};">${inits}</div>
+        <span class="member-name">${m.first_name} ${m.last_name}</span>
+        <div class="status-btns">
+          <button class="status-btn present sel" onclick="setStatus('${m.id}','present',this)">Present</button>
+          <button class="status-btn excused" onclick="setStatus('${m.id}','excused',this)">Excused</button>
+          <button class="status-btn absent" onclick="setStatus('${m.id}','absent',this)">Absent</button>
+        </div>
+      </div>`;
+    }).join('') +
+  '</div>';
+}
+
+function setStatus(memberId, status, btn) {
+  statusMap[memberId] = status;
+  const row = document.getElementById('row-' + memberId);
+  row.querySelectorAll('.status-btn').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+}
+
+async function saveAttendance() {
+  const type = document.getElementById('att-type').value;
+  const itemId = document.getElementById('att-item').value;
+  if (!itemId) return;
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  hideError('take-error');
+
+  try {
+    const records = members.map(m => ({
+      member_id: m.id,
+      meeting_id: type === 'meeting' ? itemId : null,
+      event_id:   type === 'event'   ? itemId : null,
+      status: statusMap[m.id] || 'present',
+    }));
+
+    await apiUpsert('attendance', records);
+
+    const msg = document.getElementById('save-msg');
+    msg.classList.add('visible');
+    setTimeout(() => msg.classList.remove('visible'), 2500);
+    await loadReport();
+  } catch(e) {
+    showError('take-error', 'Failed to save: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save attendance';
+  }
+}
+
+async function loadReport() {
+  const rtype = document.getElementById('report-type')?.value || 'all';
+  const rl = document.getElementById('report-list');
+  if (rl) rl.innerHTML = '<div class="loading">Loading…</div>';
+  hideError('report-error');
+
+  try {
+    const allMembers = await api('members?status=eq.active&order=last_name.asc');
+    document.getElementById('stat-members').textContent = allMembers.length;
+
+    let attQuery = 'attendance?select=member_id,status,meeting_id,event_id';
+    const att = await api(attQuery);
+
+    const meetingsSet = new Set(att.filter(a => a.meeting_id).map(a => a.meeting_id));
+    const eventsSet = new Set(att.filter(a => a.event_id).map(a => a.event_id));
+
+    let totalItems;
+    if (rtype === 'meeting') totalItems = meetingsSet.size;
+    else if (rtype === 'event') totalItems = eventsSet.size;
+    else totalItems = meetingsSet.size + eventsSet.size;
+
+    document.getElementById('stat-events').textContent = totalItems;
+
+    const filteredAtt = att.filter(a => {
+      if (rtype === 'meeting') return a.meeting_id !== null;
+      if (rtype === 'event') return a.event_id !== null;
+      return true;
+    });
+
+    const byMember = {};
+    for (const a of filteredAtt) {
+      if (!byMember[a.member_id]) byMember[a.member_id] = { total: 0, present: 0 };
+      byMember[a.member_id].total++;
+      if (a.status === 'present' || a.status === 'late') byMember[a.member_id].present++;
+    }
+
+    const rows = allMembers.map(m => {
+      const rec = byMember[m.id] || { total: 0, present: 0 };
+      const pct = rec.total ? Math.round(100 * rec.present / rec.total) : null;
+      return { m, pct, total: rec.total };
+    }).sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));
+
+    const avgPcts = rows.filter(r => r.pct !== null).map(r => r.pct);
+    const avg = avgPcts.length ? Math.round(avgPcts.reduce((a,b)=>a+b,0)/avgPcts.length) : null;
+    document.getElementById('stat-rate').textContent = avg !== null ? avg + '%' : '—';
+
+    if (!rl) return;
+
+    if (!rows.length) {
+      rl.innerHTML = '<div class="empty-state">No attendance records yet.</div>';
+      return;
+    }
+
+    rl.innerHTML = rows.map(({ m, pct, total }) => {
+      const [bg, fg] = avatarColor(m.first_name + m.last_name);
+      const inits = initials(m.first_name, m.last_name);
+      const low = pct !== null && pct < 60;
+      const barColor = low ? '#E05050' : '#D4AF37';
+      const displayPct = pct !== null ? pct + '%' : '—';
+      return `<div class="report-member-row">
+        <div class="avatar" style="background:${bg};color:${fg};width:28px;height:28px;font-size:10px;">${inits}</div>
+        <span style="font-size:13px;min-width:130px;font-weight:500;">${m.first_name} ${m.last_name}</span>
+        <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;min-width:50px;">${total} recorded</span>
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct ?? 0}%;background:${barColor};"></div></div>
+        <span class="pct ${low?'low':''}">${displayPct}</span>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    showError('report-error', 'Failed to load report: ' + e.message);
+  }
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['take','report'][i] === name);
+  });
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(name).classList.add('active');
+  if (name === 'report') loadReport();
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+function hideError(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+}
+
+init();
+</script>
+</body>
+</html>

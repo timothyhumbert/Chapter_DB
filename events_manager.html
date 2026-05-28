@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Events & Meetings</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #111111; --surface: #1A1A1A; --border: #2E2A20;
+    --text: #F0E0A0; --muted: #8A7D50;
+    --accent: #B8960C; --accent-mid: #D4AF37; --accent-light: #2A2410;
+    --danger: #8B2020; --danger-light: #2A1010;
+    --warn: #C88030; --warn-light: #231808;
+    --info: #1A4A7A; --info-light: #0E1E30;
+    --purple: #7C5CBF; --purple-light: #1E1830;
+    --radius: 10px; --radius-sm: 6px;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+  .app { max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 2rem; }
+  .header-title { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
+  .header-sub { font-size: 13px; color: var(--muted); margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .conn-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; font-family: 'DM Mono', monospace; padding: 5px 10px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+  .conn-dot.ok { background: var(--accent-mid); }
+  .conn-dot.err { background: var(--danger); }
+  .top-tabs { display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px; margin-bottom: 1.5rem; }
+  .top-tab { flex: 1; padding: 8px 10px; border: none; background: transparent; border-radius: var(--radius-sm); font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; color: var(--muted); transition: all 0.15s; }
+  .top-tab.active { background: var(--accent); color: #fff; }
+  .sub-tabs { display: flex; gap: 6px; margin-bottom: 1rem; }
+  .sub-tab { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; color: var(--muted); transition: all 0.12s; }
+  .sub-tab.active { background: var(--accent-light); color: var(--accent); border-color: var(--accent-mid); }
+  .section { display: none; }
+  .section.active { display: block; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 1rem; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .form-field { display: flex; flex-direction: column; gap: 5px; }
+  .form-field.full { grid-column: 1 / -1; }
+  .field-label { font-size: 12px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  input[type=text], input[type=date], input[type=time], select, textarea {
+    height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--bg); color: var(--text); font-size: 13px; font-family: 'DM Sans', sans-serif;
+    outline: none; transition: border-color 0.15s; width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent-mid); }
+  textarea { height: 72px; padding: 8px 10px; resize: vertical; }
+  .btn { padding: 9px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.12s; }
+  .btn:hover { background: var(--bg); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { background: #1e3710; }
+  .btn.danger { background: var(--danger-light); color: var(--danger); border-color: #e5b3b3; }
+  .btn.sm { padding: 5px 12px; font-size: 12px; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 1.25rem; align-items: center; }
+  .save-msg { font-size: 13px; color: var(--accent-mid); font-family: 'DM Mono', monospace; opacity: 0; transition: opacity 0.3s; }
+  .save-msg.visible { opacity: 1; }
+  .error-msg { background: var(--danger-light); border: 1px solid #e5b3b3; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--danger); margin-bottom: 1rem; }
+  .success-msg { background: var(--accent-light); border: 1px solid #8A6A10; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--accent); margin-bottom: 1rem; display: none; }
+  .item-list { display: flex; flex-direction: column; gap: 6px; }
+  .item-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); transition: border-color 0.15s; cursor: pointer; }
+  .item-row:hover { border-color: var(--accent-mid); }
+  .item-row.selected { border-color: var(--accent); background: var(--accent-light); }
+  .item-icon { width: 34px; height: 34px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .item-info { flex: 1; }
+  .item-name { font-size: 14px; font-weight: 500; }
+  .item-meta { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 1px; }
+  .type-pill { font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: 500; font-family: 'DM Mono', monospace; }
+  .type-chapter   { background: var(--accent-light); color: var(--accent); }
+  .type-executive { background: var(--purple-light); color: var(--purple); }
+  .type-committee { background: var(--info-light); color: var(--info); }
+  .type-other     { background: #222018; color: #A09060; }
+  .type-social       { background: var(--purple-light); color: var(--purple); }
+  .type-philanthropy { background: var(--accent-light); color: var(--accent); }
+  .type-rush         { background: var(--warn-light); color: var(--warn); }
+  .type-brotherhood  { background: var(--info-light); color: var(--info); }
+  .loading { text-align: center; padding: 2rem; color: var(--muted); font-size: 13px; font-family: 'DM Mono', monospace; }
+  .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--muted); font-size: 13px; }
+  .edit-panel { background: var(--surface); border: 1px solid var(--accent-mid); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+  .edit-panel-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <div class="header-title">Events & Meetings</div>
+      <div class="header-sub" id="org-label">connecting…</div>
+    </div>
+    <div class="conn-badge">
+      <div class="conn-dot" id="conn-dot"></div>
+      <span id="conn-text">connecting</span>
+    </div>
+  </div>
+
+  <div class="top-tabs">
+    <button class="top-tab active" onclick="switchTop('meetings')">Meetings</button>
+    <button class="top-tab" onclick="switchTop('events')">Events</button>
+  </div>
+
+  <!-- MEETINGS -->
+  <div id="meetings" class="section active">
+    <div class="sub-tabs">
+      <button class="sub-tab active" onclick="switchSub('meetings','m-add')">Add meeting</button>
+      <button class="sub-tab" onclick="switchSub('meetings','m-list')">All meetings</button>
+    </div>
+
+    <div id="m-add" class="sub-section">
+      <div id="m-add-error" class="error-msg" style="display:none;"></div>
+      <div id="m-add-success" class="success-msg"></div>
+
+      <div class="card">
+        <div class="card-title">Meeting details</div>
+        <div class="form-grid">
+          <div class="form-field full">
+            <label class="field-label">Title</label>
+            <input type="text" id="m-title" placeholder="e.g. Spring Chapter Meeting" />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Date *</label>
+            <input type="date" id="m-date" />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Time</label>
+            <input type="time" id="m-time" />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Type</label>
+            <select id="m-type">
+              <option value="chapter">Chapter</option>
+              <option value="executive">Executive</option>
+              <option value="committee">Committee</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="field-label">Location</label>
+            <input type="text" id="m-location" placeholder="Chapter house, room 101…" />
+          </div>
+          <div class="form-field full">
+            <label class="field-label">Notes</label>
+            <textarea id="m-notes" placeholder="Agenda, reminders, or other notes…"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <span class="save-msg" id="m-save-msg">Meeting created!</span>
+        <button class="btn" onclick="clearMeetingForm()">Clear</button>
+        <button class="btn primary" id="m-add-btn" onclick="addMeeting()">Create meeting</button>
+      </div>
+    </div>
+
+    <div id="m-list" class="sub-section" style="display:none;">
+      <div id="m-list-error" class="error-msg" style="display:none;"></div>
+      <div id="meeting-edit-panel" style="display:none;" class="edit-panel">
+        <div class="edit-panel-title">Editing meeting</div>
+        <div class="form-grid">
+          <div class="form-field full">
+            <label class="field-label">Title</label>
+            <input type="text" id="em-title" />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Date *</label>
+            <input type="date" id="em-date" />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Time</label>
+            <input type="time" id="em-time" />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Type</label>
+            <select id="em-type">
+              <option value="chapter">Chapter</option>
+              <option value="executive">Executive</option>
+              <option value="committee">Committee</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="field-label">Location</label>
+            <input type="text" id="em-location" />
+          </div>
+          <div class="form-field full">
+            <label class="field-label">Notes</label>
+            <textarea id="em-notes"></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn danger sm" onclick="deleteMeeting()">Delete</button>
+          <span style="flex:1;"></span>
+          <button class="btn sm" onclick="closeMeetingEdit()">Cancel</button>
+          <button class="btn primary sm" onclick="saveMeetingEdit()">Save changes</button>
+        </div>
+      </div>
+      <div id="meeting-list"><div class="loading">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- EVENTS -->
+  <div id="events" class="section">
+    <div class="sub-tabs">
+      <button class="sub-tab active" onclick="switchSub('events','e-add')">Add event</button>
+      <button class="sub-tab" onclick="switchSub('events','e-list')">All events</button>
+    </div>
+
+    <div id="e-add" class="sub-section">
+      <div id="e-add-error" class="error-msg" style="display:none;"></div>
+      <div id="e-add-success" class="success-msg"></div>
+
+      <div class="card">
+        <div class="card-title">Event details</div>
+        <div class="form-grid">
+          <div class="form-field full">
+            <label class="field-label">Event name *</label>
+            <input type="text" id="e-name" placeholder="e.g. Spring Social, Relay for Life…" />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Date *</label>
+            <input type="date" id="e-date" />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Time</label>
+            <input type="time" id="e-time" />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Type</label>
+            <select id="e-type">
+              <option value="social">Social</option>
+              <option value="philanthropy">Philanthropy</option>
+              <option value="rush">Rush</option>
+              <option value="brotherhood">Brotherhood</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="field-label">Location</label>
+            <input type="text" id="e-location" placeholder="Venue or address…" />
+          </div>
+          <div class="form-field full">
+            <label class="field-label">Notes</label>
+            <textarea id="e-notes" placeholder="Details, dress code, what to bring…"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <span class="save-msg" id="e-save-msg">Event created!</span>
+        <button class="btn" onclick="clearEventForm()">Clear</button>
+        <button class="btn primary" id="e-add-btn" onclick="addEvent()">Create event</button>
+      </div>
+    </div>
+
+    <div id="e-list" class="sub-section" style="display:none;">
+      <div id="e-list-error" class="error-msg" style="display:none;"></div>
+      <div id="event-edit-panel" style="display:none;" class="edit-panel">
+        <div class="edit-panel-title">Editing event</div>
+        <div class="form-grid">
+          <div class="form-field full">
+            <label class="field-label">Event name *</label>
+            <input type="text" id="ee-name" />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Date *</label>
+            <input type="date" id="ee-date" />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Time</label>
+            <input type="time" id="ee-time" />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Type</label>
+            <select id="ee-type">
+              <option value="social">Social</option>
+              <option value="philanthropy">Philanthropy</option>
+              <option value="rush">Rush</option>
+              <option value="brotherhood">Brotherhood</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="field-label">Location</label>
+            <input type="text" id="ee-location" />
+          </div>
+          <div class="form-field full">
+            <label class="field-label">Notes</label>
+            <textarea id="ee-notes"></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn danger sm" onclick="deleteEvent()">Delete</button>
+          <span style="flex:1;"></span>
+          <button class="btn sm" onclick="closeEventEdit()">Cancel</button>
+          <button class="btn primary sm" onclick="saveEventEdit()">Save changes</button>
+        </div>
+      </div>
+      <div id="event-list"><div class="loading">Loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://bhdoqgccfqqdcxbtyhge.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJoZG9xZ2NjZnFxZGN4YnR5aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODY4OTUsImV4cCI6MjA5NTQ2Mjg5NX0.SZzZKntYhf8_uXx1yQyHfJT7aXwVnjHJA-UOIJQpfZI';
+
+const TYPE_ICONS = {
+  chapter:'🏛️', executive:'⚡', committee:'📋', other:'📌',
+  social:'🎉', philanthropy:'🤝', rush:'🌟', brotherhood:'🔗'
+};
+
+async function api(path, method='GET', body=null) {
+  const opts = { method, headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, opts);
+  if (!r.ok) throw new Error(await r.text());
+  try { return await r.json(); } catch { return null; }
+}
+
+let allMeetings = [], allEvents = [];
+let editingMeetingId = null, editingEventId = null;
+
+function showError(id, msg) { const el=document.getElementById(id); if(el){el.textContent=msg;el.style.display='block';} }
+function hideError(id) { const el=document.getElementById(id); if(el) el.style.display='none'; }
+
+function formatDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+}
+function formatTime(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'pm' : 'am';
+  return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+async function init() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('m-date').value = today;
+  document.getElementById('e-date').value = today;
+  try {
+    await Promise.all([loadMeetings(), loadEvents()]);
+    document.getElementById('conn-dot').className = 'conn-dot ok';
+    document.getElementById('conn-text').textContent = 'connected';
+    document.getElementById('org-label').textContent = `${allMeetings.length} meetings · ${allEvents.length} events`;
+  } catch(e) {
+    document.getElementById('conn-dot').className = 'conn-dot err';
+    document.getElementById('conn-text').textContent = 'error';
+    showError('m-add-error', 'Could not connect: ' + e.message);
+  }
+}
+
+async function loadMeetings() {
+  allMeetings = await api('meetings?order=meeting_date.desc');
+  renderMeetings();
+}
+
+async function loadEvents() {
+  allEvents = await api('events?order=event_date.desc');
+  renderEvents();
+}
+
+function renderMeetings() {
+  const list = document.getElementById('meeting-list');
+  if (!list) return;
+  if (!allMeetings.length) { list.innerHTML = '<div class="empty-state">No meetings yet. Create one above.</div>'; return; }
+  list.innerHTML = '<div class="item-list">' + allMeetings.map(m => {
+    const icon = TYPE_ICONS[m.type] || '📌';
+    const meta = [formatDate(m.meeting_date), m.meeting_time ? formatTime(m.meeting_time) : null, m.location].filter(Boolean).join(' · ');
+    return `<div class="item-row ${editingMeetingId===m.id?'selected':''}" onclick="openMeetingEdit('${m.id}')">
+      <div class="item-icon" style="background:var(--accent-light);">${icon}</div>
+      <div class="item-info">
+        <div class="item-name">${m.title || 'Meeting'}</div>
+        <div class="item-meta">${meta}</div>
+      </div>
+      <span class="type-pill type-${m.type||'other'}">${m.type||'other'}</span>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function renderEvents() {
+  const list = document.getElementById('event-list');
+  if (!list) return;
+  if (!allEvents.length) { list.innerHTML = '<div class="empty-state">No events yet. Create one above.</div>'; return; }
+  list.innerHTML = '<div class="item-list">' + allEvents.map(e => {
+    const icon = TYPE_ICONS[e.type] || '📌';
+    const meta = [formatDate(e.event_date), e.event_time ? formatTime(e.event_time) : null, e.location].filter(Boolean).join(' · ');
+    return `<div class="item-row ${editingEventId===e.id?'selected':''}" onclick="openEventEdit('${e.id}')">
+      <div class="item-icon" style="background:var(--purple-light);">${icon}</div>
+      <div class="item-info">
+        <div class="item-name">${e.name}</div>
+        <div class="item-meta">${meta}</div>
+      </div>
+      <span class="type-pill type-${e.type||'other'}">${e.type||'other'}</span>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function openMeetingEdit(id) {
+  const m = allMeetings.find(x => x.id === id);
+  if (!m) return;
+  editingMeetingId = id;
+  document.getElementById('em-title').value = m.title || '';
+  document.getElementById('em-date').value = m.meeting_date || '';
+  document.getElementById('em-time').value = m.meeting_time || '';
+  document.getElementById('em-type').value = m.type || 'chapter';
+  document.getElementById('em-location').value = m.location || '';
+  document.getElementById('em-notes').value = m.notes || '';
+  document.getElementById('meeting-edit-panel').style.display = 'block';
+  document.getElementById('meeting-edit-panel').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  renderMeetings();
+}
+
+function closeMeetingEdit() {
+  editingMeetingId = null;
+  document.getElementById('meeting-edit-panel').style.display = 'none';
+  renderMeetings();
+}
+
+async function saveMeetingEdit() {
+  hideError('m-list-error');
+  const date = document.getElementById('em-date').value;
+  if (!date) { showError('m-list-error', 'Date is required.'); return; }
+  const body = {
+    title: document.getElementById('em-title').value.trim() || null,
+    meeting_date: date,
+    meeting_time: document.getElementById('em-time').value || null,
+    type: document.getElementById('em-type').value,
+    location: document.getElementById('em-location').value.trim() || null,
+    notes: document.getElementById('em-notes').value.trim() || null,
+  };
+  try {
+    await api(`meetings?id=eq.${editingMeetingId}`, 'PATCH', body);
+    closeMeetingEdit();
+    await loadMeetings();
+  } catch(e) { showError('m-list-error', 'Failed to save: ' + e.message); }
+}
+
+async function deleteMeeting() {
+  if (!confirm('Delete this meeting? Attendance records for it will also be deleted.')) return;
+  hideError('m-list-error');
+  try {
+    await api(`meetings?id=eq.${editingMeetingId}`, 'DELETE');
+    closeMeetingEdit();
+    await loadMeetings();
+    document.getElementById('org-label').textContent = `${allMeetings.length} meetings · ${allEvents.length} events`;
+  } catch(e) { showError('m-list-error', 'Failed to delete: ' + e.message); }
+}
+
+async function addMeeting() {
+  hideError('m-add-error');
+  const date = document.getElementById('m-date').value;
+  if (!date) { showError('m-add-error', 'Date is required.'); return; }
+  const body = {
+    title: document.getElementById('m-title').value.trim() || null,
+    meeting_date: date,
+    meeting_time: document.getElementById('m-time').value || null,
+    type: document.getElementById('m-type').value,
+    location: document.getElementById('m-location').value.trim() || null,
+    notes: document.getElementById('m-notes').value.trim() || null,
+  };
+  const btn = document.getElementById('m-add-btn');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    await api('meetings', 'POST', body);
+    const s = document.getElementById('m-add-success');
+    s.textContent = `Meeting created for ${formatDate(date)}!`; s.style.display = 'block';
+    const msg = document.getElementById('m-save-msg');
+    msg.classList.add('visible');
+    setTimeout(() => { msg.classList.remove('visible'); s.style.display='none'; }, 3000);
+    clearMeetingForm();
+    await loadMeetings();
+    document.getElementById('org-label').textContent = `${allMeetings.length} meetings · ${allEvents.length} events`;
+  } catch(e) { showError('m-add-error', 'Failed to create: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Create meeting'; }
+}
+
+function clearMeetingForm() {
+  ['m-title','m-location','m-notes'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('m-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('m-time').value = '';
+  document.getElementById('m-type').value = 'chapter';
+  hideError('m-add-error');
+}
+
+function openEventEdit(id) {
+  const e = allEvents.find(x => x.id === id);
+  if (!e) return;
+  editingEventId = id;
+  document.getElementById('ee-name').value = e.name || '';
+  document.getElementById('ee-date').value = e.event_date || '';
+  document.getElementById('ee-time').value = e.event_time || '';
+  document.getElementById('ee-type').value = e.type || 'social';
+  document.getElementById('ee-location').value = e.location || '';
+  document.getElementById('ee-notes').value = e.notes || '';
+  document.getElementById('event-edit-panel').style.display = 'block';
+  document.getElementById('event-edit-panel').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  renderEvents();
+}
+
+function closeEventEdit() {
+  editingEventId = null;
+  document.getElementById('event-edit-panel').style.display = 'none';
+  renderEvents();
+}
+
+async function saveEventEdit() {
+  hideError('e-list-error');
+  const name = document.getElementById('ee-name').value.trim();
+  const date = document.getElementById('ee-date').value;
+  if (!name || !date) { showError('e-list-error', 'Name and date are required.'); return; }
+  const body = {
+    name, event_date: date,
+    event_time: document.getElementById('ee-time').value || null,
+    type: document.getElementById('ee-type').value,
+    location: document.getElementById('ee-location').value.trim() || null,
+    notes: document.getElementById('ee-notes').value.trim() || null,
+  };
+  try {
+    await api(`events?id=eq.${editingEventId}`, 'PATCH', body);
+    closeEventEdit();
+    await loadEvents();
+  } catch(e) { showError('e-list-error', 'Failed to save: ' + e.message); }
+}
+
+async function deleteEvent() {
+  if (!confirm('Delete this event? Attendance records for it will also be deleted.')) return;
+  try {
+    await api(`events?id=eq.${editingEventId}`, 'DELETE');
+    closeEventEdit();
+    await loadEvents();
+    document.getElementById('org-label').textContent = `${allMeetings.length} meetings · ${allEvents.length} events`;
+  } catch(e) { showError('e-list-error', 'Failed to delete: ' + e.message); }
+}
+
+async function addEvent() {
+  hideError('e-add-error');
+  const name = document.getElementById('e-name').value.trim();
+  const date = document.getElementById('e-date').value;
+  if (!name) { showError('e-add-error', 'Event name is required.'); return; }
+  if (!date) { showError('e-add-error', 'Date is required.'); return; }
+  const body = {
+    name, event_date: date,
+    event_time: document.getElementById('e-time').value || null,
+    type: document.getElementById('e-type').value,
+    location: document.getElementById('e-location').value.trim() || null,
+    notes: document.getElementById('e-notes').value.trim() || null,
+  };
+  const btn = document.getElementById('e-add-btn');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    await api('events', 'POST', body);
+    const s = document.getElementById('e-add-success');
+    s.textContent = `${name} created!`; s.style.display = 'block';
+    const msg = document.getElementById('e-save-msg');
+    msg.classList.add('visible');
+    setTimeout(() => { msg.classList.remove('visible'); s.style.display='none'; }, 3000);
+    clearEventForm();
+    await loadEvents();
+    document.getElementById('org-label').textContent = `${allMeetings.length} meetings · ${allEvents.length} events`;
+  } catch(e) { showError('e-add-error', 'Failed to create: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Create event'; }
+}
+
+function clearEventForm() {
+  ['e-name','e-location','e-notes'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('e-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('e-time').value = '';
+  document.getElementById('e-type').value = 'social';
+  hideError('e-add-error');
+}
+
+function switchTop(name) {
+  document.querySelectorAll('.top-tab').forEach((t,i) => t.classList.toggle('active', ['meetings','events'][i]===name));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(name).classList.add('active');
+}
+
+function switchSub(parent, subId) {
+  const parentEl = document.getElementById(parent);
+  parentEl.querySelectorAll('.sub-tab').forEach((t,i) => {
+    const ids = parent === 'meetings' ? ['m-add','m-list'] : ['e-add','e-list'];
+    t.classList.toggle('active', ids[i] === subId);
+  });
+  parentEl.querySelectorAll('.sub-section').forEach(s => s.style.display = 'none');
+  document.getElementById(subId).style.display = 'block';
+  if (subId === 'm-list') renderMeetings();
+  if (subId === 'e-list') renderEvents();
+}
+
+init();
+</script>
+</body>
+</html>
