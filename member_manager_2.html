@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Member Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F7F5F0; --surface: #FFFFFF; --border: #E2DDD6;
+    --text: #1A1714; --muted: #7A746C;
+    --accent: #2D5016; --accent-mid: #5A8A2A; --accent-light: #EDF2E6;
+    --danger: #7A1A1A; --danger-light: #FDF0F0;
+    --warn: #7A4A10; --warn-light: #FDF3E6;
+    --purple: #4C1D95; --purple-light: #EDE9FE;
+    --radius: 10px; --radius-sm: 6px;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+  .app { max-width: 760px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 2rem; }
+  .header-title { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
+  .header-sub { font-size: 13px; color: var(--muted); margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .conn-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; font-family: 'DM Mono', monospace; padding: 5px 10px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); flex-shrink: 0; }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+  .conn-dot.ok { background: var(--accent-mid); } .conn-dot.err { background: var(--danger); }
+  .tabs { display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px; margin-bottom: 1.5rem; }
+  .tab { flex: 1; padding: 8px 10px; border: none; background: transparent; border-radius: var(--radius-sm); font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; color: var(--muted); transition: all 0.15s; }
+  .tab.active { background: var(--accent); color: #fff; }
+  .section { display: none; } .section.active { display: block; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 1rem; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .form-grid.four  { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .form-field { display: flex; flex-direction: column; gap: 5px; }
+  .form-field.full { grid-column: 1 / -1; }
+  .field-label { font-size: 12px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  input[type=text], input[type=email], input[type=tel], input[type=date], select {
+    height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--bg); color: var(--text); font-size: 13px; font-family: 'DM Sans', sans-serif;
+    outline: none; transition: border-color 0.15s; width: 100%;
+  }
+  input:focus, select:focus { border-color: var(--accent-mid); }
+  .btn { padding: 9px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.12s; }
+  .btn:hover { background: var(--bg); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { background: #1e3710; }
+  .btn.danger { background: var(--danger-light); color: var(--danger); border-color: #e5b3b3; }
+  .btn.danger:hover { background: #f9dada; }
+  .btn.sm { padding: 5px 12px; font-size: 12px; } .btn.xs { padding: 3px 8px; font-size: 11px; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 1.25rem; align-items: center; }
+  .save-msg { font-size: 13px; color: var(--accent-mid); font-family: 'DM Mono', monospace; opacity: 0; transition: opacity 0.3s; }
+  .save-msg.visible { opacity: 1; }
+  .error-msg { background: var(--danger-light); border: 1px solid #e5b3b3; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--danger); margin-bottom: 1rem; }
+  .success-msg { background: var(--accent-light); border: 1px solid #a3c97a; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--accent); margin-bottom: 1rem; display:none; }
+  .edu-block { display: flex; flex-direction: column; gap: 10px; }
+  .edu-row { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; }
+  .edu-row-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .edu-row-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+  .edu-row-grid { display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 10px; }
+  /* Positions */
+  .pos-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; min-height: 0; }
+  .pos-row { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; }
+  .pos-title { flex: 1; font-size: 13px; font-weight: 500; }
+  .pos-year { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .pos-remove { border: none; background: none; cursor: pointer; color: var(--muted); font-size: 16px; line-height: 1; padding: 0 2px; }
+  .pos-remove:hover { color: var(--danger); }
+  .pos-add-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+  .pos-empty { font-size: 13px; color: var(--muted); font-style: italic; padding: 6px 0; }
+  /* Roster */
+  .member-list { display: flex; flex-direction: column; gap: 6px; }
+  .member-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); transition: border-color 0.15s; cursor: pointer; }
+  .member-row:hover { border-color: var(--accent-mid); }
+  .member-row.selected { border-color: var(--accent); background: var(--accent-light); }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; font-family: 'DM Mono', monospace; }
+  .member-info { flex: 1; min-width: 0; }
+  .member-name { font-size: 14px; font-weight: 500; }
+  .member-meta { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .status-pill { font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: 500; font-family: 'DM Mono', monospace; flex-shrink: 0; }
+  .status-active { background: var(--accent-light); color: var(--accent); }
+  .status-pledge { background: var(--purple-light); color: var(--purple); }
+  .status-alumni { background: var(--warn-light); color: var(--warn); }
+  .status-inactive { background: #F1EFE8; color: #444441; }
+  .loading { text-align: center; padding: 2rem; color: var(--muted); font-size: 13px; font-family: 'DM Mono', monospace; }
+  .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--muted); font-size: 13px; }
+  .search-bar { display: flex; gap: 8px; margin-bottom: 1rem; }
+  .search-bar input { flex: 1; }
+  .filter-select { width: 140px; flex-shrink: 0; }
+  .edit-panel { background: var(--surface); border: 1px solid var(--accent-mid); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+  .edit-panel-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 1rem; }
+  .section-divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0 0.75rem; }
+  .sub-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 0.75rem; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <div class="header-title">Member Manager</div>
+      <div class="header-sub" id="org-label">connecting…</div>
+    </div>
+    <div class="conn-badge"><div class="conn-dot" id="conn-dot"></div><span id="conn-text">connecting</span></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('add')">Add member</button>
+    <button class="tab" onclick="switchTab('roster')">Roster</button>
+  </div>
+
+  <!-- ── ADD ── -->
+  <div id="add" class="section active">
+    <div id="add-error" class="error-msg" style="display:none;"></div>
+    <div id="add-success" class="success-msg"></div>
+
+    <div class="card">
+      <div class="card-title">Name</div>
+      <div class="form-grid four">
+        <div class="form-field" style="grid-column:span 2;"><label class="field-label">First name *</label><input type="text" id="first_name" placeholder="James" /></div>
+        <div class="form-field"><label class="field-label">M.I.</label><input type="text" id="middle_initial" placeholder="R" maxlength="2" /></div>
+        <div class="form-field"><label class="field-label">Suffix</label><select id="suffix"><option value="">—</option><option>Jr.</option><option>Sr.</option><option>II</option><option>III</option><option>IV</option></select></div>
+        <div class="form-field" style="grid-column:span 3;"><label class="field-label">Last name *</label><input type="text" id="last_name" placeholder="Davis" /></div>
+        <div class="form-field"><label class="field-label">Birthdate</label><input type="date" id="birthdate" /></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Contact information</div>
+      <div class="form-grid">
+        <div class="form-field full"><label class="field-label">Email address</label><input type="email" id="email" placeholder="james.davis@university.edu" /></div>
+        <div class="form-field"><label class="field-label">Phone number</label><input type="tel" id="phone" placeholder="(555) 123-4567" /></div>
+        <div class="form-field"><label class="field-label">Street address</label><input type="text" id="address_street" placeholder="123 Main St" /></div>
+        <div class="form-field"><label class="field-label">City</label><input type="text" id="address_city" placeholder="Springfield" /></div>
+        <div class="form-field"><label class="field-label">State</label><input type="text" id="address_state" placeholder="IL" maxlength="2" /></div>
+        <div class="form-field"><label class="field-label">ZIP code</label><input type="text" id="address_zip" placeholder="62701" maxlength="10" /></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Education</div>
+      <div class="edu-block">
+        <div class="edu-row"><div class="edu-row-header"><span class="edu-row-label">School 1</span></div><div class="edu-row-grid"><div class="form-field"><label class="field-label">School / University</label><input type="text" id="edu0-school" placeholder="State University" /></div><div class="form-field"><label class="field-label">Degree</label><input type="text" id="edu0-degree" placeholder="B.S. Computer Science" /></div><div class="form-field"><label class="field-label">Year</label><input type="text" id="edu0-year" placeholder="2025" maxlength="4" /></div></div></div>
+        <div class="edu-row"><div class="edu-row-header"><span class="edu-row-label">School 2</span></div><div class="edu-row-grid"><div class="form-field"><label class="field-label">School / University</label><input type="text" id="edu1-school" placeholder="Optional" /></div><div class="form-field"><label class="field-label">Degree</label><input type="text" id="edu1-degree" placeholder="Optional" /></div><div class="form-field"><label class="field-label">Year</label><input type="text" id="edu1-year" maxlength="4" /></div></div></div>
+        <div class="edu-row"><div class="edu-row-header"><span class="edu-row-label">School 3</span></div><div class="edu-row-grid"><div class="form-field"><label class="field-label">School / University</label><input type="text" id="edu2-school" placeholder="Optional" /></div><div class="form-field"><label class="field-label">Degree</label><input type="text" id="edu2-degree" placeholder="Optional" /></div><div class="form-field"><label class="field-label">Year</label><input type="text" id="edu2-year" maxlength="4" /></div></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Chapter information</div>
+      <div class="form-grid">
+        <div class="form-field"><label class="field-label">Status</label><select id="status"><option value="active">Active</option><option value="pledge">Pledge</option><option value="alumni">Alumni</option><option value="inactive">Inactive</option></select></div>
+        <div class="form-field"><label class="field-label">Join date</label><input type="date" id="join_date" /></div>
+        <div class="form-field"><label class="field-label">Initiation date</label><input type="date" id="initiation_date" /></div>
+        <div class="form-field"><label class="field-label">Chapter initiated</label><input type="text" id="initiation_chapter" placeholder="Alpha Beta" /></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Positions held</div>
+      <div class="pos-list" id="add-pos-list"><p class="pos-empty">No positions added yet.</p></div>
+      <div class="pos-add-row">
+        <div class="form-field"><label class="field-label">Position</label><select id="add-pos-select"><option value="">— select position —</option></select></div>
+        <div class="form-field"><label class="field-label">Fraternal year</label><input type="text" id="add-pos-year" placeholder="2024–2025" /></div>
+        <button class="btn sm" style="margin-bottom:1px;" onclick="addPosRow('add')">+ Add</button>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <span class="save-msg" id="add-save-msg">Member added!</span>
+      <button class="btn" onclick="clearForm()">Clear</button>
+      <button class="btn primary" id="add-btn" onclick="addMember()">Add member</button>
+    </div>
+  </div>
+
+  <!-- ── ROSTER ── -->
+  <div id="roster" class="section">
+    <div id="roster-error" class="error-msg" style="display:none;"></div>
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="Search by name…" oninput="filterRoster()" />
+      <select class="filter-select" id="status-filter" onchange="filterRoster()">
+        <option value="">All statuses</option><option value="active">Active</option>
+        <option value="pledge">Pledge</option><option value="alumni">Alumni</option><option value="inactive">Inactive</option>
+      </select>
+    </div>
+
+    <div id="edit-panel" style="display:none;" class="edit-panel">
+      <div class="edit-panel-title">Editing member</div>
+
+      <div class="sub-section-title">Name</div>
+      <div class="form-grid four">
+        <div class="form-field" style="grid-column:span 2;"><label class="field-label">First name *</label><input type="text" id="edit-first_name" /></div>
+        <div class="form-field"><label class="field-label">M.I.</label><input type="text" id="edit-middle_initial" maxlength="2" /></div>
+        <div class="form-field"><label class="field-label">Suffix</label><select id="edit-suffix"><option value="">—</option><option>Jr.</option><option>Sr.</option><option>II</option><option>III</option><option>IV</option></select></div>
+        <div class="form-field" style="grid-column:span 3;"><label class="field-label">Last name *</label><input type="text" id="edit-last_name" /></div>
+        <div class="form-field"><label class="field-label">Birthdate</label><input type="date" id="edit-birthdate" /></div>
+      </div>
+
+      <hr class="section-divider" />
+      <div class="sub-section-title">Contact information</div>
+      <div class="form-grid">
+        <div class="form-field full"><label class="field-label">Email address</label><input type="email" id="edit-email" /></div>
+        <div class="form-field"><label class="field-label">Phone number</label><input type="tel" id="edit-phone" /></div>
+        <div class="form-field"><label class="field-label">Street address</label><input type="text" id="edit-address_street" /></div>
+        <div class="form-field"><label class="field-label">City</label><input type="text" id="edit-address_city" /></div>
+        <div class="form-field"><label class="field-label">State</label><input type="text" id="edit-address_state" maxlength="2" /></div>
+        <div class="form-field"><label class="field-label">ZIP code</label><input type="text" id="edit-address_zip" maxlength="10" /></div>
+      </div>
+
+      <hr class="section-divider" />
+      <div class="sub-section-title">Education</div>
+      <div class="edu-block">
+        <div class="edu-row"><div class="edu-row-header"><span class="edu-row-label">School 1</span></div><div class="edu-row-grid"><div class="form-field"><label class="field-label">School</label><input type="text" id="eedu0-school" /></div><div class="form-field"><label class="field-label">Degree</label><input type="text" id="eedu0-degree" /></div><div class="form-field"><label class="field-label">Year</label><input type="text" id="eedu0-year" maxlength="4" /></div></div></div>
+        <div class="edu-row"><div class="edu-row-header"><span class="edu-row-label">School 2</span></div><div class="edu-row-grid"><div class="form-field"><label class="field-label">School</label><input type="text" id="eedu1-school" /></div><div class="form-field"><label class="field-label">Degree</label><input type="text" id="eedu1-degree" /></div><div class="form-field"><label class="field-label">Year</label><input type="text" id="eedu1-year" maxlength="4" /></div></div></div>
+        <div class="edu-row"><div class="edu-row-header"><span class="edu-row-label">School 3</span></div><div class="edu-row-grid"><div class="form-field"><label class="field-label">School</label><input type="text" id="eedu2-school" /></div><div class="form-field"><label class="field-label">Degree</label><input type="text" id="eedu2-degree" /></div><div class="form-field"><label class="field-label">Year</label><input type="text" id="eedu2-year" maxlength="4" /></div></div></div>
+      </div>
+
+      <hr class="section-divider" />
+      <div class="sub-section-title">Chapter information</div>
+      <div class="form-grid">
+        <div class="form-field"><label class="field-label">Status</label><select id="edit-status"><option value="active">Active</option><option value="pledge">Pledge</option><option value="alumni">Alumni</option><option value="inactive">Inactive</option></select></div>
+        <div class="form-field"><label class="field-label">Join date</label><input type="date" id="edit-join_date" /></div>
+        <div class="form-field"><label class="field-label">Initiation date</label><input type="date" id="edit-initiation_date" /></div>
+        <div class="form-field"><label class="field-label">Chapter initiated</label><input type="text" id="edit-initiation_chapter" /></div>
+      </div>
+
+      <hr class="section-divider" />
+      <div class="sub-section-title">Positions held</div>
+      <div class="pos-list" id="edit-pos-list"><p class="pos-empty">No positions recorded.</p></div>
+      <div class="pos-add-row">
+        <div class="form-field"><label class="field-label">Position</label><select id="edit-pos-select"><option value="">— select position —</option></select></div>
+        <div class="form-field"><label class="field-label">Fraternal year</label><input type="text" id="edit-pos-year" placeholder="2024–2025" /></div>
+        <button class="btn sm" style="margin-bottom:1px;" onclick="addPosRow('edit')">+ Add</button>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn danger sm" onclick="deleteMember()">Delete member</button>
+        <span style="flex:1;"></span>
+        <button class="btn sm" onclick="closeEdit()">Cancel</button>
+        <button class="btn primary sm" onclick="saveEdit()">Save changes</button>
+      </div>
+    </div>
+
+    <div id="roster-list"><div class="loading">Loading…</div></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://bhdoqgccfqqdcxbtyhge.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJoZG9xZ2NjZnFxZGN4YnR5aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODY4OTUsImV4cCI6MjA5NTQ2Mjg5NX0.SZzZKntYhf8_uXx1yQyHfJT7aXwVnjHJA-UOIJQpfZI';
+
+const COLORS=[['#EDF2E6','#2D5016'],['#EDE9FE','#4C1D95'],['#FDF3E6','#7A4A10'],['#E6F1FB','#0C447C'],['#FAEEDA','#854F0B'],['#E1F5EE','#0F6E56'],['#FBEAF0','#72243E'],['#F1EFE8','#444441']];
+function avatarColor(n){let h=0;for(let c of n)h=(h*31+c.charCodeAt(0))&0xFFFF;return COLORS[h%COLORS.length];}
+function initials(f,l){return((f||'')[0]||'').toUpperCase()+((l||'')[0]||'').toUpperCase();}
+function fullName(m){let n=m.first_name||'';if(m.middle_initial)n+=' '+m.middle_initial+'.';n+=' '+(m.last_name||'');if(m.suffix)n+=' '+m.suffix;return n.trim();}
+
+async function api(path,method='GET',body=null){
+  const opts={method,headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'}};
+  if(body)opts.body=JSON.stringify(body);
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/${path}`,opts);
+  if(!r.ok)throw new Error(await r.text());
+  try{return await r.json();}catch{return null;}
+}
+async function apiReturn(path,method='POST',body=null){
+  const opts={method,headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=representation'}};
+  if(body)opts.body=JSON.stringify(body);
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/${path}`,opts);
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+
+let allMembers=[], allPositions=[], editingId=null;
+// In-memory pending positions for add/edit forms
+let pendingAddPos=[], pendingEditPos=[];
+
+function showError(id,msg){const el=document.getElementById(id);if(el){el.textContent=msg;el.style.display='block';}}
+function hideError(id){const el=document.getElementById(id);if(el)el.style.display='none';}
+
+async function init(){
+  try{
+    [allMembers, allPositions]=await Promise.all([
+      api('members?order=last_name.asc'),
+      api('positions?order=sort_order.asc')
+    ]);
+    populatePositionSelects();
+    renderRoster(allMembers);
+    document.getElementById('conn-dot').className='conn-dot ok';
+    document.getElementById('conn-text').textContent='connected';
+    document.getElementById('org-label').textContent=`${allMembers.length} members total`;
+    document.getElementById('join_date').value=new Date().toISOString().split('T')[0];
+  }catch(e){
+    document.getElementById('conn-dot').className='conn-dot err';
+    document.getElementById('conn-text').textContent='error';
+    showError('add-error','Could not connect: '+e.message);
+  }
+}
+
+function populatePositionSelects(){
+  ['add-pos-select','edit-pos-select'].forEach(sid=>{
+    const sel=document.getElementById(sid);
+    if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">— select position —</option>'+
+      allPositions.map(p=>`<option value="${p.id}">${p.title}</option>`).join('');
+    sel.value=cur;
+  });
+}
+
+// ── Pending positions UI ──
+function renderPosList(context){
+  const list=document.getElementById(`${context}-pos-list`);
+  const pending=context==='add'?pendingAddPos:pendingEditPos;
+  if(!pending.length){list.innerHTML='<p class="pos-empty">No positions recorded.</p>';return;}
+  list.innerHTML=pending.map((p,i)=>`
+    <div class="pos-row">
+      <span class="pos-title">${p.title}</span>
+      <span class="pos-year">${p.fraternal_year}</span>
+      <button class="pos-remove" title="Remove" onclick="removePosRow('${context}',${i})">×</button>
+    </div>`).join('');
+}
+
+function addPosRow(context){
+  const selId=`${context}-pos-select`, yearId=`${context}-pos-year`;
+  const sel=document.getElementById(selId);
+  const year=document.getElementById(yearId).value.trim();
+  if(!sel.value){alert('Please select a position.');return;}
+  if(!year){alert('Please enter the fraternal year.');return;}
+  const title=sel.options[sel.selectedIndex].text;
+  const pending=context==='add'?pendingAddPos:pendingEditPos;
+  pending.push({position_id:sel.value, title, fraternal_year:year});
+  sel.value='';
+  document.getElementById(yearId).value='';
+  renderPosList(context);
+}
+
+function removePosRow(context,idx){
+  const pending=context==='add'?pendingAddPos:pendingEditPos;
+  pending.splice(idx,1);
+  renderPosList(context);
+}
+
+async function savePositions(memberId, pending){
+  // Delete all existing and re-insert
+  await api(`member_positions?member_id=eq.${memberId}`,'DELETE');
+  if(pending.length){
+    const rows=pending.map(p=>({member_id:memberId,position_id:p.position_id,fraternal_year:p.fraternal_year}));
+    await api('member_positions','POST',rows);
+  }
+}
+
+// ── Roster ──
+async function loadRoster(){
+  allMembers=await api('members?order=last_name.asc');
+  renderRoster(allMembers);
+}
+
+function renderRoster(members){
+  const list=document.getElementById('roster-list');
+  if(!members.length){list.innerHTML='<div class="empty-state">No members found.</div>';return;}
+  list.innerHTML='<div class="member-list">'+members.map(m=>{
+    const[bg,fg]=avatarColor((m.first_name||'')+(m.last_name||''));
+    const inits=initials(m.first_name,m.last_name);
+    const sc='status-'+(m.status||'inactive');
+    const meta=[m.initiation_chapter,m.initiation_date?'Initiated '+m.initiation_date.slice(0,4):null,m.email].filter(Boolean);
+    return`<div class="member-row ${editingId===m.id?'selected':''}" onclick="openEdit('${m.id}')">
+      <div class="avatar" style="background:${bg};color:${fg};">${inits}</div>
+      <div class="member-info"><div class="member-name">${fullName(m)}</div><div class="member-meta">${meta.join(' · ')||'—'}</div></div>
+      <span class="status-pill ${sc}">${m.status||''}</span>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function filterRoster(){
+  const q=document.getElementById('search-input').value.toLowerCase();
+  const s=document.getElementById('status-filter').value;
+  renderRoster(allMembers.filter(m=>{
+    const name=`${m.first_name} ${m.last_name}`.toLowerCase();
+    return(!q||name.includes(q))&&(!s||m.status===s);
+  }));
+}
+
+async function openEdit(id){
+  const m=allMembers.find(x=>x.id===id);if(!m)return;
+  editingId=id;
+  const fields=['first_name','middle_initial','last_name','suffix','birthdate','email','phone',
+    'address_street','address_city','address_state','address_zip','status','join_date',
+    'initiation_date','initiation_chapter'];
+  fields.forEach(f=>{const el=document.getElementById('edit-'+f);if(el)el.value=m[f]||'';});
+
+  try{
+    const[edu, positions]=await Promise.all([
+      api(`member_education?member_id=eq.${id}&order=sort_order.asc`),
+      api(`member_positions?member_id=eq.${id}&select=id,position_id,fraternal_year,positions(title)`)
+    ]);
+    for(let i=0;i<3;i++){const e=(edu||[])[i]||{};['school','degree'].forEach(f=>document.getElementById(`eedu${i}-${f}`).value=e[f]||'');document.getElementById(`eedu${i}-year`).value=e.graduation_year||'';}
+    pendingEditPos=(positions||[]).map(p=>({id:p.id,position_id:p.position_id,title:p.positions?.title||'',fraternal_year:p.fraternal_year}));
+  }catch{pendingEditPos=[];}
+  renderPosList('edit');
+
+  document.getElementById('edit-panel').style.display='block';
+  document.getElementById('edit-panel').scrollIntoView({behavior:'smooth',block:'start'});
+  filterRoster();
+}
+
+function closeEdit(){editingId=null;pendingEditPos=[];document.getElementById('edit-panel').style.display='none';filterRoster();}
+
+async function saveEdit(){
+  hideError('roster-error');
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g('edit-first_name')||!g('edit-last_name')){showError('roster-error','First and last name are required.');return;}
+  const body={first_name:g('edit-first_name'),middle_initial:g('edit-middle_initial')||null,last_name:g('edit-last_name'),suffix:g('edit-suffix')||null,birthdate:g('edit-birthdate')||null,email:g('edit-email')||null,phone:g('edit-phone')||null,address_street:g('edit-address_street')||null,address_city:g('edit-address_city')||null,address_state:g('edit-address_state')||null,address_zip:g('edit-address_zip')||null,status:g('edit-status')||'active',join_date:g('edit-join_date')||null,initiation_date:g('edit-initiation_date')||null,initiation_chapter:g('edit-initiation_chapter')||null};
+  try{
+    await api(`members?id=eq.${editingId}`,'PATCH',body);
+    await saveEducation(editingId,'eedu');
+    await savePositions(editingId,pendingEditPos);
+    closeEdit();await loadRoster();
+    document.getElementById('org-label').textContent=`${allMembers.length} members total`;
+  }catch(e){showError('roster-error','Failed to save: '+e.message);}
+}
+
+async function saveEducation(memberId,prefix){
+  await api(`member_education?member_id=eq.${memberId}`,'DELETE');
+  const rows=[];
+  for(let i=0;i<3;i++){const school=document.getElementById(`${prefix}${i}-school`).value.trim();const degree=document.getElementById(`${prefix}${i}-degree`).value.trim();const yr=document.getElementById(`${prefix}${i}-year`).value.trim();if(school||degree)rows.push({member_id:memberId,school:school||null,degree:degree||null,graduation_year:yr?parseInt(yr):null,sort_order:i});}
+  if(rows.length)await api('member_education','POST',rows);
+}
+
+async function deleteMember(){
+  if(!confirm('Delete this member? All their records will also be deleted.'))return;
+  try{await api(`members?id=eq.${editingId}`,'DELETE');closeEdit();await loadRoster();document.getElementById('org-label').textContent=`${allMembers.length} members total`;}
+  catch(e){showError('roster-error','Failed to delete: '+e.message);}
+}
+
+async function addMember(){
+  hideError('add-error');
+  const g=id=>document.getElementById(id).value.trim();
+  const first=g('first_name'),last=g('last_name');
+  if(!first||!last){showError('add-error','First and last name are required.');return;}
+  const body={first_name:first,middle_initial:g('middle_initial')||null,last_name:last,suffix:g('suffix')||null,birthdate:g('birthdate')||null,email:g('email')||null,phone:g('phone')||null,address_street:g('address_street')||null,address_city:g('address_city')||null,address_state:g('address_state')||null,address_zip:g('address_zip')||null,status:g('status')||'active',join_date:g('join_date')||null,initiation_date:g('initiation_date')||null,initiation_chapter:g('initiation_chapter')||null};
+  const btn=document.getElementById('add-btn');
+  btn.disabled=true;btn.textContent='Adding…';
+  try{
+    const created=await apiReturn('members','POST',body);
+    const newId=created[0]?.id;
+    if(newId){await saveEducation(newId,'edu');await savePositions(newId,pendingAddPos);}
+    const msg=document.getElementById('add-save-msg');msg.classList.add('visible');
+    const suc=document.getElementById('add-success');suc.textContent=`${first} ${last} added!`;suc.style.display='block';
+    setTimeout(()=>{msg.classList.remove('visible');suc.style.display='none';},3000);
+    clearForm();await loadRoster();
+    document.getElementById('org-label').textContent=`${allMembers.length} members total`;
+  }catch(e){showError('add-error','Failed to add: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='Add member';}
+}
+
+function clearForm(){
+  ['first_name','middle_initial','last_name','birthdate','email','phone','address_street','address_city','address_state','address_zip','initiation_date','initiation_chapter'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('suffix').value='';document.getElementById('status').value='active';
+  document.getElementById('join_date').value=new Date().toISOString().split('T')[0];
+  for(let i=0;i<3;i++)['school','degree','year'].forEach(f=>{const el=document.getElementById(`edu${i}-${f}`);if(el)el.value='';});
+  pendingAddPos=[];renderPosList('add');
+  hideError('add-error');document.getElementById('add-success').style.display='none';
+}
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['add','roster'][i]===name));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(name).classList.add('active');
+}
+
+init();
+</script>
+</body>
+</html>
